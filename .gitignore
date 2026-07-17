@@ -1,2 +1,5 @@
 # Claude Code workspace — keep local, do not publish
-.claude/
+# Ignore .claude/ contents (not the dir itself, so exceptions below can re-include)
+.claude/*
+# ...except project memory (theme analysis, project log, client notes), which is version-controlled
+!.claude/context/
