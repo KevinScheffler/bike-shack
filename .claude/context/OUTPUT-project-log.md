@@ -14,3 +14,11 @@ Persistent memory. Read at the start of every session. Keep entries concise — 
   - `client-notes.md` is still an empty template — fill in client/brand context before building client-facing features.
   - No `.claude/context/reference/` yet — no visual/design references analyzed.
   - Keep all new work additive; do not modify `base.css`, `global.js`, or other base files.
+
+## 2026-07-18 — Feature: modern-product-grid (scoped)
+
+- **Setup:** consolidated the theme-context tracking onto `main` (via PR #1) and dropped the separate `chore/track-theme-context` branch. Feature work lives on `feat-modern-product-grid` (local only, not yet pushed). `backup-pre-squash` kept as a safety net.
+- **Scoped** a custom collection section (Approach A): standalone `section-modern-product-grid.liquid` + CSS, CSS-only interactions, no base-theme changes. Chose custom over extending Dawn's `main-collection-product-grid` to own the distinctive notch/stagger/hover cleanly and stay additive.
+- **Key decisions:** 4/2/2 columns (desktop/tablet/mobile); even columns offset ~½ card on desktop only; notched lower-right outline (crisp SVG/mask, not box-shadow) with title+price label in the notch; accent = its own section setting (defaults to scheme link color); colors from Dawn color schemes (not the reference's dark+lime brand); secondary-image swipe-from-top on hover (desktop only, graceful fallback for single-image products); native `{% paginate %}` + `pagination.liquid`, 4/8/12 per page (default 8).
+- **v1 explicitly excludes:** filtering/facets, sorting, quick-add, collection picker.
+- **Risk to watch:** the notched-corner outline CSS is the fiddliest part — reserve space so long titles never overlap the stroke. Full spec in `.claude/features/feature-modern-product-grid/feature.md`.
