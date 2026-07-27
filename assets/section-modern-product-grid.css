@@ -1,0 +1,198 @@
+/* Modern Product Grid
+   ------------------------------------------------------------------
+   Colors come from the section's color scheme (--color-foreground, etc.)
+   plus --mpg-accent, which is set inline from the section's accent_color
+   setting (falls back to the scheme's link color).
+*/
+
+.mpg-grid {
+  --mpg-gap: 1.5rem;
+  --mpg-radius: 0.8rem;
+  --mpg-duration: 500ms;
+  --mpg-duration-short: 200ms;
+  --mpg-ease: cubic-bezier(0.16, 1, 0.3, 1); /* soft, slightly elliptical */
+  /* Desktop stagger offset (~half a card). Used for BOTH the translate and the
+     reserved bottom space, so shifted cards are always contained in the section. */
+  --mpg-stagger: clamp(6rem, 10vw, 12rem);
+
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--mpg-gap);
+}
+
+/* ---- Header / empty / pagination ---- */
+.mpg-header {
+  margin-bottom: 2.4rem;
+}
+
+.mpg-header__title {
+  margin: 0;
+}
+
+.mpg-empty {
+  text-align: center;
+  padding: 4rem 0;
+}
+
+.mpg-empty__text {
+  margin: 0;
+  color: rgb(var(--color-foreground));
+}
+
+.mpg-pagination {
+  margin-top: 3rem;
+}
+
+/* ---- Card ---- */
+.mpg-card {
+  position: relative;
+}
+
+.mpg-card__link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.mpg-card__media {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+}
+
+/* Clips BOTH images to the notch shape so the lifestyle image never covers the
+   label/notch. The outline (frame) and label sit outside this, so they stay clean. */
+.mpg-card__media-clip {
+  position: absolute;
+  inset: 0;
+}
+
+/* Helmet sits fully inside the card (contain) on the scheme background.
+   Extra bottom padding keeps it clear of the label in the notch. */
+.mpg-card__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 8% 9% 18% 9%;
+  object-fit: contain;
+}
+
+.mpg-card__img--primary {
+  z-index: 1;
+}
+
+/* Secondary (lifestyle) image: full-bleed (fills the whole card, unlike the
+   contained product shot), hidden by default, revealed top -> bottom on hover/focus
+   with an elliptical leading edge (curved dome) anchored at the top-center. */
+.mpg-card__img--secondary {
+  z-index: 2;
+  padding: 0;
+  object-fit: cover;
+  clip-path: ellipse(100% 0% at 50% 0);
+  transition: clip-path var(--mpg-duration) var(--mpg-ease);
+}
+
+.mpg-card__placeholder {
+  background: rgba(var(--color-foreground), 0.04);
+}
+
+/* Notched outline drawn on top of the media */
+.mpg-card__frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.mpg-card__frame-path {
+  fill: none;
+  stroke: rgba(var(--color-foreground), 0.2);
+  stroke-width: 1.5;
+  transition: stroke var(--mpg-duration-short) ease;
+}
+
+/* ---- Label (sits inside the notch, bottom-right) ---- */
+.mpg-card__label {
+  position: absolute;
+  right: 0.9rem;
+  bottom: 0.9rem;
+  z-index: 4;
+  max-width: 36%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  text-align: right;
+}
+
+.mpg-card__title {
+  color: rgb(var(--color-foreground));
+  font-size: 1.2rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mpg-card__price {
+  color: var(--mpg-accent);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ---- Interaction: hover (pointer devices only) + keyboard focus ---- */
+@media (hover: hover) {
+  .mpg-card:hover .mpg-card__img--secondary {
+    clip-path: ellipse(100% 150% at 50% 0);
+  }
+
+  .mpg-card:hover .mpg-card__frame-path {
+    stroke: var(--mpg-accent);
+  }
+}
+
+.mpg-card__link:focus-visible {
+  outline: none;
+}
+
+.mpg-card__link:focus-visible .mpg-card__frame-path {
+  stroke: var(--mpg-accent);
+  stroke-width: 2.5;
+}
+
+.mpg-card__link:focus-visible .mpg-card__img--secondary {
+  clip-path: ellipse(100% 150% at 50% 0);
+}
+
+/* ---- Desktop: 4 columns + staggered even columns ---- */
+@media screen and (min-width: 990px) {
+  .mpg-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2.5rem;
+    /* Reserve the offset (+ breathing room) so the staggered even columns stay
+       inside the section and clear the pagination. Matches the translate below. */
+    padding-bottom: calc(var(--mpg-stagger) + 3rem);
+  }
+
+  .mpg-card:nth-child(4n + 2),
+  .mpg-card:nth-child(4n) {
+    transform: translateY(var(--mpg-stagger));
+  }
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .mpg-card__img--secondary {
+    transition: none;
+  }
+}

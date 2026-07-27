@@ -1,0 +1,217 @@
+{% comment %} Load component styles {% endcomment %}
+{{ 'section-modern-product-grid.css' | asset_url | stylesheet_tag }}
+
+{%- comment -%} Coerce the select value to an integer for paginate {%- endcomment -%}
+{%- assign products_per_page = section.settings.products_per_page | plus: 0 -%}
+
+{%- style -%}
+  .section-{{ section.id }}-padding {
+    padding-top: {{ section.settings.padding_top | times: 0.75 | round: 0 }}px;
+    padding-bottom: {{ section.settings.padding_bottom | times: 0.75 | round: 0 }}px;
+  }
+
+  @media screen and (min-width: 750px) {
+    .section-{{ section.id }}-padding {
+      padding-top: {{ section.settings.padding_top }}px;
+      padding-bottom: {{ section.settings.padding_bottom }}px;
+    }
+  }
+
+  #ModernProductGrid-{{ section.id }} {
+    --mpg-accent: {{ section.settings.accent_color | default: 'rgb(var(--color-link))' }};
+  }
+  #ModernProductGrid-{{ section.id }} .mpg-card__media-clip {
+    clip-path: url(#mpg-notch-{{ section.id }});
+  }
+{%- endstyle -%}
+
+<div
+  id="ModernProductGrid-{{ section.id }}"
+  class="section-{{ section.id }}-padding color-{{ section.settings.color_scheme }} gradient"
+>
+  {%- comment -%} Notch-shaped clip for the card images (0..1 objectBoundingBox coords). {%- endcomment -%}
+  <svg class="mpg-defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <defs>
+      <clipPath id="mpg-notch-{{ section.id }}" clipPathUnits="objectBoundingBox">
+        <path d="M 0.04375,0 L 0.95625,0 Q 1,0 1,0.035 L 1,0.8 L 0.63125,0.8 Q 0.6,0.8 0.6,0.825 L 0.6,0.975 Q 0.6,1 0.56875,1 L 0.04375,1 Q 0,1 0,0.965 L 0,0.035 Q 0,0 0.04375,0 Z" />
+      </clipPath>
+    </defs>
+  </svg>
+
+  <div class="page-width">
+    {%- if section.settings.heading != blank -%}
+      <div class="mpg-header">
+        <h2 class="mpg-header__title inline-richtext">{{ section.settings.heading }}</h2>
+      </div>
+    {%- endif -%}
+
+    {%- paginate collection.products by products_per_page -%}
+      {%- if collection.products.size == 0 -%}
+        <div class="mpg-empty">
+          <p class="mpg-empty__text">{{ 'sections.collection_template.empty' | t }}</p>
+        </div>
+      {%- else -%}
+        <ul class="mpg-grid" role="list">
+          {%- for product in collection.products -%}
+            {%- if forloop.index <= 4 -%}
+              {%- assign loading = 'eager' -%}
+            {%- else -%}
+              {%- assign loading = 'lazy' -%}
+            {%- endif -%}
+
+            {%- liquid
+              assign img_alt = product.title | escape
+
+              if settings.currency_code_enabled
+                assign money_price = product.price | money_with_currency
+                assign money_price_min = product.price_min | money_with_currency
+              else
+                assign money_price = product.price | money
+                assign money_price_min = product.price_min | money
+              endif
+            -%}
+            <li class="mpg-card">
+              <a class="mpg-card__link" href="{{ product.url }}">
+                <span class="mpg-card__media">
+                  <span class="mpg-card__media-clip">
+                  {%- if product.featured_media -%}
+                    {{
+                      product.featured_media.preview_image
+                      | image_url: width: 800
+                      | image_tag:
+                        loading: loading,
+                        widths: '165, 265, 360, 535, 720',
+                        sizes: '(min-width: 990px) 25vw, 50vw',
+                        alt: img_alt,
+                        class: 'mpg-card__img mpg-card__img--primary'
+                    }}
+                  {%- else -%}
+                    {{ 'product-apparel-1' | placeholder_svg_tag: 'mpg-card__img mpg-card__img--primary mpg-card__placeholder' }}
+                  {%- endif -%}
+
+                  {%- if product.media.size > 1 -%}
+                    {{
+                      product.media[1].preview_image
+                      | image_url: width: 800
+                      | image_tag:
+                        loading: 'lazy',
+                        widths: '165, 265, 360, 535, 720',
+                        sizes: '(min-width: 990px) 25vw, 50vw',
+                        alt: img_alt,
+                        class: 'mpg-card__img mpg-card__img--secondary'
+                    }}
+                  {%- endif -%}
+
+                  </span>{%- comment -%} end .mpg-card__media-clip {%- endcomment -%}
+
+                  {%- comment -%}
+                    Notched outline. viewBox 80x100 matches the 4:5 media, so
+                    preserveAspectRatio="none" maps with equal x/y scale (no distortion).
+                    The bottom-right corner is a concave, rounded notch where the label sits.
+                  {%- endcomment -%}
+                  <svg
+                    class="mpg-card__frame"
+                    viewBox="0 0 80 100"
+                    preserveAspectRatio="none"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <path
+                      class="mpg-card__frame-path"
+                      vector-effect="non-scaling-stroke"
+                      d="M 3.5,0 L 76.5,0 Q 80,0 80,3.5 L 80,80 L 50.5,80 Q 48,80 48,82.5 L 48,97.5 Q 48,100 45.5,100 L 3.5,100 Q 0,100 0,96.5 L 0,3.5 Q 0,0 3.5,0 Z"
+                    />
+                  </svg>
+
+                  <span class="mpg-card__label">
+                    <span class="mpg-card__title">{{ product.title }}</span>
+                    <span class="mpg-card__price">
+                      {%- if product.price_varies -%}
+                        {{ 'products.product.price.from_price_html' | t: price: money_price_min }}
+                      {%- else -%}
+                        {{ money_price }}
+                      {%- endif -%}
+                    </span>
+                  </span>
+                </span>
+              </a>
+            </li>
+          {%- endfor -%}
+        </ul>
+
+        {%- if paginate.pages > 1 -%}
+          <div class="mpg-pagination">
+            {% render 'pagination', paginate: paginate, anchor: '' %}
+          </div>
+        {%- endif -%}
+      {%- endif -%}
+    {%- endpaginate -%}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Modern Product Grid",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "Heading"
+    },
+    {
+      "type": "select",
+      "id": "products_per_page",
+      "label": "Products per page",
+      "default": "8",
+      "options": [
+        { "value": "4", "label": "4" },
+        { "value": "8", "label": "8" },
+        { "value": "12", "label": "12" }
+      ]
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:sections.all.colors.label",
+      "default": "scheme-1"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent color",
+      "info": "Used for the card outline highlight and the price. Defaults to the color scheme's link color when left empty."
+    },
+    {
+      "type": "header",
+      "content": "t:sections.all.padding.section_padding_heading"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "t:sections.all.padding.padding_top",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "t:sections.all.padding.padding_bottom",
+      "default": 36
+    }
+  ],
+  "presets": [
+    {
+      "name": "Modern Product Grid"
+    }
+  ]
+}
+{% endschema %}
