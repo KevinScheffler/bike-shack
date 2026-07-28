@@ -8,9 +8,16 @@
 .mpg-grid {
   --mpg-gap: 1.5rem;
   --mpg-radius: 0.8rem;
-  --mpg-duration: 500ms;
+  --mpg-duration: 0.5s;
   --mpg-duration-short: 200ms;
-  --mpg-ease: cubic-bezier(0.16, 1, 0.3, 1); /* soft, slightly elliptical */
+  --mpg-ease: ease;
+  /* Reveal shape: a dome anchored at the top-center that sweeps down.
+     Hidden = zero height at the very top edge.
+     Shown  = the smallest ellipse that still covers the bottom CORNERS
+              (at rx 100%, corners need ry >= ~115.5%), so the sweep uses the
+              full duration and lands exactly as the container fills. */
+  --mpg-reveal-hidden: ellipse(100% 0% at 50% 0);
+  --mpg-reveal-shown: ellipse(100% 118% at 50% 0);
   /* Desktop stagger offset (~half a card). Used for BOTH the translate and the
      reserved bottom space, so shifted cards are always contained in the section. */
   --mpg-stagger: clamp(6rem, 10vw, 12rem);
@@ -93,7 +100,7 @@
   z-index: 2;
   padding: 0;
   object-fit: cover;
-  clip-path: ellipse(100% 0% at 50% 0);
+  clip-path: var(--mpg-reveal-hidden);
   transition: clip-path var(--mpg-duration) var(--mpg-ease);
 }
 
@@ -153,7 +160,7 @@
 /* ---- Interaction: hover (pointer devices only) + keyboard focus ---- */
 @media (hover: hover) {
   .mpg-card:hover .mpg-card__img--secondary {
-    clip-path: ellipse(100% 150% at 50% 0);
+    clip-path: var(--mpg-reveal-shown);
   }
 
   .mpg-card:hover .mpg-card__frame-path {
@@ -171,7 +178,7 @@
 }
 
 .mpg-card__link:focus-visible .mpg-card__img--secondary {
-  clip-path: ellipse(100% 150% at 50% 0);
+  clip-path: var(--mpg-reveal-shown);
 }
 
 /* ---- Desktop: 4 columns + staggered even columns ---- */
