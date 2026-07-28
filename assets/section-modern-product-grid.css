@@ -7,7 +7,6 @@
 
 .mpg-grid {
   --mpg-gap: 1.5rem;
-  --mpg-radius: 0.8rem;
   --mpg-duration: 0.5s;
   --mpg-duration-short: 200ms;
   --mpg-ease: ease;
@@ -64,10 +63,11 @@
   color: inherit;
 }
 
+/* Square — the reference card measures 451x456. */
 .mpg-card__media {
   position: relative;
   display: block;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1 / 1;
 }
 
 /* Clips BOTH images to the notch shape so the lifestyle image never covers the
@@ -78,14 +78,14 @@
 }
 
 /* Helmet sits fully inside the card (contain) on the scheme background.
-   Extra bottom padding keeps it clear of the label in the notch. */
+   Extra bottom padding keeps it clear of the notch strip. */
 .mpg-card__img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  padding: 8% 9% 18% 9%;
+  padding: 10% 10% 16% 10%;
   object-fit: contain;
 }
 
@@ -126,28 +126,53 @@
   transition: stroke var(--mpg-duration-short) ease;
 }
 
-/* ---- Label (sits inside the notch, bottom-right) ---- */
+/* Two outlines ship; only the one matching the breakpoint is shown. Must stay in
+   sync with the clip-path swap in the section's style block. */
+.mpg-card__frame-path--sm {
+  display: none;
+}
+
+@media screen and (max-width: 749px) {
+  .mpg-card__frame-path--lg {
+    display: none;
+  }
+
+  .mpg-card__frame-path--sm {
+    display: inline;
+  }
+}
+
+/* ---- Label (sits in the notch strip, bottom-right) ----
+   Single line — title then price — matching the reference. The notch strip is
+   only ~9.6% of the card's height, so a stacked label cannot fit. Measured from
+   the reference: text sits ~2.6% up from the bottom and runs flush to the right
+   edge. The title truncates; the price never shrinks. */
+/* The label must stay INSIDE the notch band. If its box is taller than the band,
+   the text pokes above the notch line back into the card and collides with the
+   outline (and with the right border, which still exists above that line).
+   Band is ~9.65% of card height; box = font-size x line-height + this offset.
+   max-width is set so the left edge clears the S-curve at the label's TOP edge,
+   which is where the curve is furthest right. */
 .mpg-card__label {
   position: absolute;
-  right: 0.9rem;
-  bottom: 0.9rem;
+  right: 2%;
+  bottom: 1%;
   z-index: 4;
-  max-width: 36%;
+  max-width: 54%;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.1rem;
-  text-align: right;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.6rem;
 }
 
 .mpg-card__title {
   color: rgb(var(--color-foreground));
   font-size: 1.2rem;
-  line-height: 1.25;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  line-height: 1.2;
+  min-width: 0;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mpg-card__price {
@@ -155,6 +180,23 @@
   font-size: 1.15rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex: none;
+}
+
+/* Small screens: the notch is far wider (see the section's clip-path swap), so the
+   label gets that width back. Without this the title truncates to nothing and the
+   price overflows the notch into the card. */
+@media screen and (max-width: 749px) {
+  .mpg-card__label {
+    max-width: 66%;
+    gap: 0.5rem;
+  }
+
+  .mpg-card__title,
+  .mpg-card__price {
+    font-size: 1rem;
+  }
 }
 
 /* ---- Interaction: hover (pointer devices only) + keyboard focus ---- */
