@@ -38,7 +38,7 @@
         "padding_bottom": 40
       }
     },
-    "section_modern_product_grid_U3mWHH": {
+    "section_modern_product_grid_VydLXN": {
       "type": "section-modern-product-grid",
       "name": "Modern Product Grid",
       "settings": {
@@ -54,6 +54,6 @@
   "order": [
     "banner",
     "product-grid",
-    "section_modern_product_grid_U3mWHH"
+    "section_modern_product_grid_VydLXN"
   ]
 }
