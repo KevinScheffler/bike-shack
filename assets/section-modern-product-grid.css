@@ -1,0 +1,247 @@
+/* Modern Product Grid
+   ------------------------------------------------------------------
+   Colors come from the section's color scheme (--color-foreground, etc.)
+   plus --mpg-accent, which is set inline from the section's accent_color
+   setting (falls back to the scheme's link color).
+*/
+
+.mpg-grid {
+  --mpg-gap: 1.5rem;
+  --mpg-duration: 0.5s;
+  --mpg-duration-short: 200ms;
+  --mpg-ease: ease;
+  /* Reveal shape: a dome anchored at the top-center that sweeps down.
+     Hidden = zero height at the very top edge.
+     Shown  = the smallest ellipse that still covers the bottom CORNERS
+              (at rx 100%, corners need ry >= ~115.5%), so the sweep uses the
+              full duration and lands exactly as the container fills. */
+  --mpg-reveal-hidden: ellipse(100% 0% at 50% 0);
+  --mpg-reveal-shown: ellipse(100% 118% at 50% 0);
+  /* Desktop stagger offset (~half a card). Used for BOTH the translate and the
+     reserved bottom space, so shifted cards are always contained in the section. */
+  --mpg-stagger: clamp(6rem, 10vw, 12rem);
+
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--mpg-gap);
+}
+
+/* ---- Header / empty / pagination ---- */
+.mpg-header {
+  margin-bottom: 2.4rem;
+}
+
+.mpg-header__title {
+  margin: 0;
+}
+
+.mpg-empty {
+  text-align: center;
+  padding: 4rem 0;
+}
+
+.mpg-empty__text {
+  margin: 0;
+  color: rgb(var(--color-foreground));
+}
+
+.mpg-pagination {
+  margin-top: 3rem;
+}
+
+/* ---- Card ---- */
+.mpg-card {
+  position: relative;
+}
+
+.mpg-card__link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Square — the reference card measures 451x456. */
+.mpg-card__media {
+  position: relative;
+  display: block;
+  aspect-ratio: 1 / 1;
+}
+
+/* Clips BOTH images to the notch shape so the lifestyle image never covers the
+   label/notch. The outline (frame) and label sit outside this, so they stay clean. */
+.mpg-card__media-clip {
+  position: absolute;
+  inset: 0;
+}
+
+/* Helmet sits fully inside the card (contain) on the scheme background.
+   Extra bottom padding keeps it clear of the notch strip. */
+.mpg-card__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 10% 10% 16% 10%;
+  object-fit: contain;
+}
+
+.mpg-card__img--primary {
+  z-index: 1;
+}
+
+/* Secondary (lifestyle) image: full-bleed (fills the whole card, unlike the
+   contained product shot), hidden by default, revealed top -> bottom on hover/focus
+   with an elliptical leading edge (curved dome) anchored at the top-center. */
+.mpg-card__img--secondary {
+  z-index: 2;
+  padding: 0;
+  object-fit: cover;
+  clip-path: var(--mpg-reveal-hidden);
+  transition: clip-path var(--mpg-duration) var(--mpg-ease);
+}
+
+.mpg-card__placeholder {
+  background: rgba(var(--color-foreground), 0.04);
+}
+
+/* Notched outline drawn on top of the media */
+.mpg-card__frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.mpg-card__frame-path {
+  fill: none;
+  stroke: rgba(var(--color-foreground), 0.2);
+  stroke-width: 1.5;
+  transition: stroke var(--mpg-duration-short) ease;
+}
+
+/* Two outlines ship; only the one matching the breakpoint is shown. Must stay in
+   sync with the clip-path swap in the section's style block. */
+.mpg-card__frame-path--sm {
+  display: none;
+}
+
+@media screen and (max-width: 749px) {
+  .mpg-card__frame-path--lg {
+    display: none;
+  }
+
+  .mpg-card__frame-path--sm {
+    display: inline;
+  }
+}
+
+/* ---- Label (sits in the notch strip, bottom-right) ----
+   Single line — title then price — matching the reference. The notch strip is
+   only ~9.6% of the card's height, so a stacked label cannot fit. Measured from
+   the reference: text sits ~2.6% up from the bottom and runs flush to the right
+   edge. The title truncates; the price never shrinks. */
+/* The label must stay INSIDE the notch band. If its box is taller than the band,
+   the text pokes above the notch line back into the card and collides with the
+   outline (and with the right border, which still exists above that line).
+   Band is ~9.65% of card height; box = font-size x line-height + this offset.
+   max-width is set so the left edge clears the S-curve at the label's TOP edge,
+   which is where the curve is furthest right. */
+.mpg-card__label {
+  position: absolute;
+  right: 2%;
+  bottom: 1%;
+  z-index: 4;
+  max-width: 54%;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.mpg-card__title {
+  color: rgb(var(--color-foreground));
+  font-size: 1.2rem;
+  line-height: 1.2;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mpg-card__price {
+  color: var(--mpg-accent);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex: none;
+}
+
+/* Small screens: the notch is far wider (see the section's clip-path swap), so the
+   label gets that width back. Without this the title truncates to nothing and the
+   price overflows the notch into the card. */
+@media screen and (max-width: 749px) {
+  .mpg-card__label {
+    max-width: 66%;
+    gap: 0.5rem;
+  }
+
+  .mpg-card__title,
+  .mpg-card__price {
+    font-size: 1rem;
+  }
+}
+
+/* ---- Interaction: hover (pointer devices only) + keyboard focus ---- */
+@media (hover: hover) {
+  .mpg-card:hover .mpg-card__img--secondary {
+    clip-path: var(--mpg-reveal-shown);
+  }
+
+  .mpg-card:hover .mpg-card__frame-path {
+    stroke: var(--mpg-accent);
+  }
+}
+
+.mpg-card__link:focus-visible {
+  outline: none;
+}
+
+.mpg-card__link:focus-visible .mpg-card__frame-path {
+  stroke: var(--mpg-accent);
+  stroke-width: 2.5;
+}
+
+.mpg-card__link:focus-visible .mpg-card__img--secondary {
+  clip-path: var(--mpg-reveal-shown);
+}
+
+/* ---- Desktop: 4 columns + staggered even columns ---- */
+@media screen and (min-width: 990px) {
+  .mpg-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2.5rem;
+    /* Reserve the offset (+ breathing room) so the staggered even columns stay
+       inside the section and clear the pagination. Matches the translate below. */
+    padding-bottom: calc(var(--mpg-stagger) + 3rem);
+  }
+
+  .mpg-card:nth-child(4n + 2),
+  .mpg-card:nth-child(4n) {
+    transform: translateY(var(--mpg-stagger));
+  }
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .mpg-card__img--secondary {
+    transition: none;
+  }
+}

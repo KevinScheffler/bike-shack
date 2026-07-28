@@ -1,5 +1,5 @@
 # Claude Code workspace — keep local, do not publish.
 # Includes project memory (theme analysis, project log, client notes): these live
 # on disk and are still read at the start of every session, they are just not
-# version-controlled, so branches stay theme-code only.
+# version-controlled, so feature branches stay theme-code only.
 .claude/
