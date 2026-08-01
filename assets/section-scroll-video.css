@@ -1,0 +1,297 @@
+/* Scroll Video
+   ------------------------------------------------------------------
+   A full-screen video pinned with position:sticky while scroll position
+   drives its playhead. Tooltips are anchored to points on the VIDEO FRAME,
+   not the viewport, which matters because the video is object-fit:cover and
+   therefore crops differently at every window shape.
+
+   Colors come from the section's color scheme (--color-foreground etc.)
+   plus --sv-accent, set from the tooltip_accent setting (falls back to the
+   scheme's foreground).
+
+   Four custom properties are written by assets/scroll-video.js and are the
+   bridge between the video's real rendered box and the tooltip positions:
+     --sv-rw / --sv-rh   the video's rendered size, including cropped-off parts
+     --sv-ox / --sv-oy   how much of it overflows the stage, per side
+
+   Reminder: 1rem = 10px in this theme (html font-size: 62.5%).
+*/
+
+.scroll-video {
+  /* Must be declared here, not only from the section's style block. The marker
+     and line resolve --sv-accent inside a `border` shorthand and a
+     background-color; if it is ever undefined the shorthand is invalid and the
+     arc, dot and line all disappear silently. The section overrides this only
+     when the merchant has actually picked a color. */
+  --sv-accent: rgb(var(--color-foreground));
+
+  --sv-marker: 3.6rem;
+  --sv-dot: 1rem;
+  --sv-stroke: 0.25rem;
+  --sv-gap: 1rem;
+  --sv-fade: var(--duration-medium, 300ms);
+
+  display: block;
+}
+
+.scroll-video__heading {
+  margin: 0;
+}
+
+/* ---- Track and pin ----------------------------------------------------
+   The track's height is what decides how long the pin lasts: the stage stays
+   stuck for (track height - 100vh) of scrolling. 300vh gives 200vh of scrub,
+   which for the 6.567s source video works out to roughly 9px per frame.
+   Deliberately a constant, not a merchant setting.
+*/
+.scroll-video__track {
+  display: none;
+  position: relative;
+  height: 300vh;
+}
+
+.scroll-video__pin {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.scroll-video__stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: rgb(var(--color-background));
+}
+
+.scroll-video__poster,
+.scroll-video__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Poster sits above the video until the video has buffered enough to scrub. */
+.scroll-video__poster {
+  z-index: 1;
+  transition: opacity var(--duration-long, 500ms) ease;
+}
+
+.scroll-video.is-playable .scroll-video__poster {
+  opacity: 0;
+}
+
+/* ---- Tooltips ---------------------------------------------------------
+   Each tooltip is a zero-size anchor point placed inside the video frame.
+   Its parts are positioned outward from that point, so the marker's centre
+   always lands exactly on the authored x/y.
+*/
+.scroll-video__tooltips {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.scroll-video__tooltip {
+  position: absolute;
+  width: 0;
+  height: 0;
+  left: calc(var(--sv-x, 50) * var(--sv-rw, 100%) / 100 - var(--sv-ox, 0px));
+  top: calc(var(--sv-y, 50) * var(--sv-rh, 100%) / 100 - var(--sv-oy, 0px));
+  color: rgb(var(--color-foreground));
+}
+
+/* Visible by default so the section still communicates without JS, and so the
+   design can be reviewed before the timing logic exists. Once the component
+   initialises it adds .is-ready and takes over visibility entirely. */
+.scroll-video.is-ready .scroll-video__tooltip {
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.94);
+  transition: opacity var(--sv-fade) ease, transform var(--sv-fade) ease, visibility 0s linear var(--sv-fade);
+}
+
+.scroll-video.is-ready .scroll-video__tooltip.is-active {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+  transition: opacity var(--sv-fade) ease, transform var(--sv-fade) ease, visibility 0s;
+}
+
+/* Marker: filled inner dot inside an incomplete arc. */
+.scroll-video__marker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--sv-marker);
+  height: var(--sv-marker);
+  transform: translate(-50%, -50%);
+}
+
+/* Half-open ring whose opening faces the line, so the two read as one connected
+   mark rather than a line floating beside a broken circle.
+
+   With border-radius 50% each border side owns a 90deg wedge, meeting on the
+   diagonals. Two transparent adjacent sides give a 180deg opening centred on a
+   diagonal; rotating 45deg brings that centre round to due east (or west). */
+.scroll-video__arc {
+  position: absolute;
+  inset: 0;
+  border: var(--sv-stroke) solid var(--sv-accent);
+  border-radius: 50%;
+  border-top-color: transparent;
+  border-right-color: transparent;
+  transform: rotate(45deg);
+}
+
+.scroll-video__tooltip--left .scroll-video__arc {
+  border-top-color: var(--sv-accent);
+  border-right-color: var(--sv-accent);
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.scroll-video__dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--sv-dot);
+  height: var(--sv-dot);
+  margin: calc(var(--sv-dot) / -2) 0 0 calc(var(--sv-dot) / -2);
+  border-radius: 50%;
+  background-color: var(--sv-accent);
+}
+
+/* Line: length is a percentage of the video's rendered width, so it stays
+   proportional instead of looking clumsy on smaller screens. */
+.scroll-video__line {
+  position: absolute;
+  /* Straddle the anchor instead of hanging below it — otherwise the line sits
+     half its own thickness low and never quite meets the dot's centre line. */
+  top: calc(var(--sv-stroke) / -2);
+  height: var(--sv-stroke);
+  width: calc(var(--sv-line, 8) * var(--sv-rw, 100%) / 100);
+  background-color: var(--sv-accent);
+}
+
+/* --sv-label-shift is set by the component when a label would otherwise run off
+   the edge of a cropped frame. The marker keeps its true position; only the
+   text moves. */
+.scroll-video__label {
+  position: absolute;
+  top: 0;
+  transform: translate(var(--sv-label-shift, 0px), -50%);
+  width: max-content;
+  max-width: 28rem;
+}
+
+.scroll-video__label-heading {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.06rem;
+  text-transform: uppercase;
+  line-height: 1.3;
+}
+
+.scroll-video__label-text {
+  margin: 0.4rem 0 0;
+  font-size: 1.3rem;
+  line-height: 1.4;
+  opacity: 0.8;
+}
+
+/* Right-growing: marker, then line, then label. The line starts exactly at the
+   ring's outer edge — which is where the arc is open — so it emerges from the
+   arc instead of starting at a detached distance from it. */
+.scroll-video__tooltip--right .scroll-video__line {
+  left: calc(var(--sv-marker) / 2);
+}
+
+.scroll-video__tooltip--right .scroll-video__label {
+  left: calc(var(--sv-marker) / 2 + var(--sv-line, 8) * var(--sv-rw, 100%) / 100 + var(--sv-gap));
+  text-align: left;
+}
+
+/* Left-growing: mirrored. */
+.scroll-video__tooltip--left .scroll-video__line {
+  right: calc(var(--sv-marker) / 2);
+}
+
+.scroll-video__tooltip--left .scroll-video__label {
+  right: calc(var(--sv-marker) / 2 + var(--sv-line, 8) * var(--sv-rw, 100%) / 100 + var(--sv-gap));
+  text-align: right;
+}
+
+/* ---- Static fallback --------------------------------------------------
+   Shown below the breakpoint and for reduced-motion. Constrained rather than
+   full-bleed: the source images are 500x500, so a full-width stack on a
+   ~990px tablet would upscale them roughly 1.9x and look soft.
+*/
+.scroll-video__static {
+  /* Dawn has no global border-box reset, so without this the horizontal padding
+     is added to max-width and the stack renders 590px wide instead of 560. */
+  box-sizing: border-box;
+  display: grid;
+  gap: 1.5rem;
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.scroll-video__static-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.scroll-video__a11y-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---- Breakpoint -------------------------------------------------------
+   990px, not Dawn's usual 750px: scrubbing on a tablet means a heavy download
+   on a small screen with imprecise touch scrolling.
+*/
+@media screen and (min-width: 990px) {
+  .scroll-video__track {
+    display: block;
+  }
+
+  .scroll-video__static {
+    display: none;
+  }
+
+  /* Video failed to load and there is no poster to fall back to — show the
+     static images rather than leaving an empty pinned box. */
+  .scroll-video.is-errored .scroll-video__track {
+    display: none;
+  }
+
+  .scroll-video.is-errored .scroll-video__static {
+    display: grid;
+  }
+}
+
+/* Reduced motion wins over the breakpoint, so it comes last. A scroll-driven
+   video is exactly what this preference exists to opt out of. */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-video__track {
+    display: none;
+  }
+
+  .scroll-video__static {
+    display: grid;
+  }
+
+  .scroll-video__tooltip,
+  .scroll-video__poster {
+    transition: none;
+  }
+}
