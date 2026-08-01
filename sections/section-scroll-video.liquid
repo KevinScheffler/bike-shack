@@ -1,0 +1,393 @@
+{% comment %} Load component styles and the scrub component {% endcomment %}
+{{ 'section-scroll-video.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'scroll-video.js' | asset_url }}" defer="defer"></script>
+
+{%- liquid
+  comment
+    Count configured mobile images so the static layout can adapt, and so we can
+    tell a genuinely-unconfigured section (show a placeholder) from a deliberate one.
+  endcomment
+  assign mobile_image_count = 0
+  for i in (1..3)
+    assign mobile_key = 'mobile_image_' | append: i
+    if section.settings[mobile_key] != blank
+      assign mobile_image_count = mobile_image_count | plus: 1
+    endif
+  endfor
+
+  assign has_video = false
+  if section.settings.video_url != blank
+    assign has_video = true
+  endif
+
+  assign is_unconfigured = false
+  if has_video == false and section.settings.poster_image == blank and mobile_image_count == 0
+    assign is_unconfigured = true
+  endif
+-%}
+
+{%- style -%}
+  {%- comment -%}
+    Padding sits on the heading block only. The pinned stage has to be full-bleed
+    100vw/100vh for the cover crop to work, so it cannot live inside a padded box.
+  {%- endcomment -%}
+  .section-{{ section.id }}-padding {
+    padding-top: {{ section.settings.padding_top | times: 0.75 | round: 0 }}px;
+    padding-bottom: {{ section.settings.padding_bottom | times: 0.75 | round: 0 }}px;
+  }
+
+  @media screen and (min-width: 750px) {
+    .section-{{ section.id }}-padding {
+      padding-top: {{ section.settings.padding_top }}px;
+      padding-bottom: {{ section.settings.padding_bottom }}px;
+    }
+  }
+
+  {%- comment -%}
+    Only override when a color is actually chosen. The CSS file declares the
+    scheme-foreground default; emitting an empty or transparent value here would
+    silently erase the tooltip marker and line.
+  {%- endcomment -%}
+  {%- if section.settings.tooltip_accent != blank -%}
+    #ScrollVideo-{{ section.id }} {
+      --sv-accent: {{ section.settings.tooltip_accent }};
+    }
+  {%- endif -%}
+
+  {%- comment -%}
+    Per-tooltip geometry. Emitted here rather than as inline style attributes so the
+    markup stays clean. --sv-x/--sv-y are unitless numbers; the JS-supplied
+    --sv-rw/--sv-rh/--sv-ox/--sv-oy turn them into a position inside the cropped
+    video frame (see assets/scroll-video.js).
+  {%- endcomment -%}
+  {%- for block in section.blocks -%}
+    #ScrollVideo-{{ section.id }} [data-block-id='{{ block.id }}'] {
+      --sv-x: {{ block.settings.position_x }};
+      --sv-y: {{ block.settings.position_y }};
+      --sv-line: {{ block.settings.line_length }};
+    }
+  {%- endfor -%}
+{%- endstyle -%}
+
+<div class="color-{{ section.settings.color_scheme }} gradient">
+  {%- unless section.settings.heading == blank -%}
+    <div class="page-width section-{{ section.id }}-padding">
+      <h2 class="scroll-video__heading title inline-richtext">{{ section.settings.heading }}</h2>
+    </div>
+  {%- endunless -%}
+
+  <scroll-video
+    id="ScrollVideo-{{ section.id }}"
+    class="scroll-video"
+    data-video-url="{{ section.settings.video_url }}"
+    data-breakpoint="990"
+  >
+    {%- comment -%} Desktop: the scrub track. Height drives how long the pin lasts. {%- endcomment -%}
+    <div class="scroll-video__track">
+      <div class="scroll-video__pin">
+        <div class="scroll-video__stage">
+          {%- if section.settings.poster_image != blank -%}
+            {{
+              section.settings.poster_image
+              | image_url: width: 3840
+              | image_tag:
+                class: 'scroll-video__poster',
+                widths: '750, 1100, 1500, 1780, 2000, 3000, 3840',
+                sizes: '100vw',
+                alt: section.settings.poster_image.alt
+            }}
+          {%- elsif is_unconfigured -%}
+            {{ 'hero-apparel-3' | placeholder_svg_tag: 'scroll-video__poster placeholder-svg placeholder' }}
+          {%- endif -%}
+
+          {%- comment -%}
+            No src attribute on purpose. display:none still downloads a video, so the
+            URL is injected by JS only above the breakpoint — otherwise phones and
+            tablets would pay for a file they never see.
+          {%- endcomment -%}
+          <video
+            class="scroll-video__video"
+            muted
+            playsinline
+            preload="auto"
+            tabindex="-1"
+            aria-hidden="true"
+          ></video>
+
+          {%- if section.blocks.size > 0 -%}
+            <div class="scroll-video__tooltips">
+              {%- for block in section.blocks -%}
+                <div
+                  class="scroll-video__tooltip scroll-video__tooltip--{{ block.settings.direction }}"
+                  data-block-id="{{ block.id }}"
+                  data-start="{{ block.settings.time_start }}"
+                  data-end="{{ block.settings.time_end }}"
+                  {{ block.shopify_attributes }}
+                >
+                  <span class="scroll-video__marker" aria-hidden="true">
+                    <span class="scroll-video__arc"></span>
+                    <span class="scroll-video__dot"></span>
+                  </span>
+                  <span class="scroll-video__line" aria-hidden="true"></span>
+                  <div class="scroll-video__label">
+                    {%- unless block.settings.heading == blank -%}
+                      <p class="scroll-video__label-heading">{{ block.settings.heading }}</p>
+                    {%- endunless -%}
+                    {%- unless block.settings.description == blank -%}
+                      <p class="scroll-video__label-text">{{ block.settings.description }}</p>
+                    {%- endunless -%}
+                  </div>
+                </div>
+              {%- endfor -%}
+            </div>
+          {%- endif -%}
+        </div>
+      </div>
+    </div>
+
+    {%- comment -%}
+      Static layout for < 990px and for prefers-reduced-motion. Also the no-JS
+      fallback, since it needs no scripting to be useful.
+    {%- endcomment -%}
+    {%- if mobile_image_count > 0 -%}
+      <div class="scroll-video__static">
+        {%- for i in (1..3) -%}
+          {%- assign mobile_key = 'mobile_image_' | append: i -%}
+          {%- assign mobile_image = section.settings[mobile_key] -%}
+          {%- if mobile_image != blank -%}
+            {{
+              mobile_image
+              | image_url: width: 1200
+              | image_tag:
+                class: 'scroll-video__static-image',
+                widths: '400, 600, 800, 1000, 1200',
+                sizes: '(min-width: 600px) 560px, 100vw',
+                alt: mobile_image.alt
+            }}
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+
+    {%- comment -%}
+      Tooltip copy repeated once, in block order, for screen readers. The visual
+      tooltips are tied to scroll position, which makes them unreliable to read in
+      sequence; this list makes the same content available without scrolling.
+    {%- endcomment -%}
+    {%- if section.blocks.size > 0 -%}
+      <ul class="scroll-video__a11y-list visually-hidden">
+        {%- for block in section.blocks -%}
+          <li>
+            {{ block.settings.heading }}
+            {%- if block.settings.description != blank %} — {{ block.settings.description }}{% endif -%}
+          </li>
+        {%- endfor -%}
+      </ul>
+    {%- endif -%}
+  </scroll-video>
+</div>
+
+{% schema %}
+{
+  "name": "Scroll Video",
+  "tag": "section",
+  "class": "section",
+  "disabled_on": {
+    "groups": ["header", "footer"]
+  },
+  "settings": [
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Built for the descent"
+    },
+    {
+      "type": "header",
+      "content": "Video"
+    },
+    {
+      "type": "paragraph",
+      "content": "Upload your MP4 under Content → Files, then paste its URL here. Do not use Shopify's video picker — it re-encodes the file, which breaks scroll scrubbing."
+    },
+    {
+      "type": "text",
+      "id": "video_url",
+      "label": "Video URL"
+    },
+    {
+      "type": "image_picker",
+      "id": "poster_image",
+      "label": "Poster image",
+      "info": "Shown while the video loads. Use the video's first frame at full resolution."
+    },
+    {
+      "type": "header",
+      "content": "Mobile and reduced motion"
+    },
+    {
+      "type": "paragraph",
+      "content": "Below 990px, and for visitors who prefer reduced motion, these images replace the video entirely. The video is never downloaded."
+    },
+    {
+      "type": "image_picker",
+      "id": "mobile_image_1",
+      "label": "Image 1"
+    },
+    {
+      "type": "image_picker",
+      "id": "mobile_image_2",
+      "label": "Image 2"
+    },
+    {
+      "type": "image_picker",
+      "id": "mobile_image_3",
+      "label": "Image 3"
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "tooltip_accent",
+      "label": "Tooltip accent",
+      "info": "Used for the tooltip circle and arc. Defaults to the color scheme's text color."
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "header",
+      "content": "Section padding"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding top",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Padding bottom",
+      "default": 36
+    }
+  ],
+  "blocks": [
+    {
+      "type": "tooltip",
+      "name": "Tooltip",
+      "limit": 3,
+      "settings": [
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Heading",
+          "default": "Dust filter"
+        },
+        {
+          "type": "text",
+          "id": "description",
+          "label": "Description"
+        },
+        {
+          "type": "header",
+          "content": "Position"
+        },
+        {
+          "type": "paragraph",
+          "content": "The video fills the screen and crops at the edges, so keep both values between 15% and 85% to stay visible on every screen shape."
+        },
+        {
+          "type": "range",
+          "id": "position_x",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "unit": "%",
+          "label": "Horizontal position",
+          "default": 50
+        },
+        {
+          "type": "range",
+          "id": "position_y",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "unit": "%",
+          "label": "Vertical position",
+          "default": 50
+        },
+        {
+          "type": "select",
+          "id": "direction",
+          "label": "Grow direction",
+          "options": [
+            {
+              "value": "right",
+              "label": "Right"
+            },
+            {
+              "value": "left",
+              "label": "Left"
+            }
+          ],
+          "default": "right"
+        },
+        {
+          "type": "range",
+          "id": "line_length",
+          "min": 2,
+          "max": 25,
+          "step": 1,
+          "unit": "%",
+          "label": "Line length",
+          "default": 8
+        },
+        {
+          "type": "header",
+          "content": "Timing"
+        },
+        {
+          "type": "paragraph",
+          "content": "Seconds into the video. Decimals are allowed — type 1.5 for one and a half seconds."
+        },
+        {
+          "type": "number",
+          "id": "time_start",
+          "label": "Start",
+          "default": 0
+        },
+        {
+          "type": "number",
+          "id": "time_end",
+          "label": "End",
+          "default": 2
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Scroll Video",
+      "blocks": [
+        {
+          "type": "tooltip"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}
